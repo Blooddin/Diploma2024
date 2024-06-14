@@ -14,6 +14,7 @@ esp_http_client_config_t config = {
 };
 // ---------------------------------------
 
+
 // Pin definition for CAMERA_MODEL_AI_THINKER
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
@@ -35,9 +36,26 @@ esp_http_client_config_t config = {
 // ---------------------------------------
 
 
-// Pin defenition for button and LED
-#define BUTTON_PIN 12
+// Pin defenition for motor, button and LED
+#define MOTOR1_IN1    12
+#define MOTOR1_IN2    13
+#define MOTOR2_IN2    15
+#define MOTOR2_IN1    14
+
+#define BUTTON_PIN 1
 #define LED_PIN 33
+// ---------------------------------------
+
+
+// Interruption on Button
+bool Request;
+void IRAM_ATTR isr() {
+ Request = true;
+}
+// ---------------------------------------
+
+// Make count variable
+int ct = 0;
 // ---------------------------------------
 
 void setup() {
@@ -115,11 +133,13 @@ void setup() {
   // Set up Button
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
+  attachInterrupt(BUTTON_PIN, isr, FALLING);
   // ---------------------------------------
-
 }
+
 void loop() {
-  if (digitalRead(BUTTON_PIN) == LOW && WiFi.status()== WL_CONNECTED) {
+  if (Request && WiFi.status()== WL_CONNECTED) {
+    ct = 0;
     digitalWrite(LED_PIN, LOW);
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -140,11 +160,31 @@ void loop() {
 
     err = esp_http_client_perform(client);
 
-
     esp_camera_fb_return(fb);
     esp_http_client_cleanup(client);
 
     digitalWrite(LED_PIN, HIGH);
+    Request = false;
     delay(2000);
   }
+  delay(100);
+  if(ct<100)
+  {
+    ct++;
+  }
+  else if(ct>200)
+  {
+    ct = 0;
+  }
+  else if(ct>=100 && ((ct%100)/10)%2 == 0)
+  {
+    analogWrite(MOTOR1_IN1,100);
+    digitalWrite(MOTOR1_IN2,0);
+  }
+  else
+  {
+    digitalWrite(MOTOR1_IN1,0);
+    digitalWrite(MOTOR1_IN2,0);
+  }
+
 }
